@@ -5,7 +5,7 @@ Manages prompt templates and context formatting for LLM queries.
 """
 
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.core.config import settings
 from app.services.base import Message
