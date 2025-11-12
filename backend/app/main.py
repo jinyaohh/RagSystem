@@ -262,11 +262,12 @@ async def detailed_health_check():
 # API Routes
 # ============================================================================
 
-# Import and include routers here
-# from app.api.routes import documents, query
+# Import routers
+from app.api.routes import documents, query
 
-# app.include_router(documents.router, prefix="/api/v1")
-# app.include_router(query.router, prefix="/api/v1")
+# Include routers
+app.include_router(documents.router, prefix="/api/v1")
+app.include_router(query.router, prefix="/api/v1")
 
 
 # ============================================================================
