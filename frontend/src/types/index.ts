@@ -203,3 +203,86 @@ export interface JobListResponse {
   total: number
   status_counts: Record<JobStatus, number>
 }
+
+// ============================================================================
+// Phase 3: Analytics Types
+// ============================================================================
+
+export interface DocumentTypeStats {
+  pdf: number
+  docx: number
+  xlsx: number
+  txt: number
+}
+
+export interface MostQueriedDocument {
+  document_id: string
+  filename: string
+  query_count: number
+}
+
+export interface UserAnalyticsStats {
+  total_documents: number
+  total_queries: number
+  successful_queries: number
+  failed_queries: number
+  total_storage_bytes: number
+  avg_query_time_ms: number
+  documents_by_type: DocumentTypeStats
+  queries_last_30_days: number
+  most_queried_documents: MostQueriedDocument[]
+}
+
+export interface DailyActivity {
+  date: string
+  count: number
+}
+
+export interface UserActivityResponse {
+  period: string
+  daily_queries: DailyActivity[]
+  daily_uploads: DailyActivity[]
+}
+
+export interface PopularQuery {
+  question: string
+  count: number
+  avg_response_time_ms: number
+}
+
+export interface PopularQueriesResponse {
+  queries: PopularQuery[]
+}
+
+export interface SystemOverview {
+  total_users: number
+  active_users_30d: number
+  total_documents: number
+  total_queries: number
+  total_storage_gb: number
+  avg_query_latency_ms: number
+  success_rate_percent: number
+  processing_queue_length: number
+}
+
+export interface StepPerformance {
+  avg_ms: number
+  min_ms: number
+  max_ms: number
+  p50_ms: number
+  p95_ms: number
+  p99_ms: number
+  success_rate: number
+}
+
+export interface TypePerformance {
+  avg_ms: number
+  count: number
+}
+
+export interface ProcessingStatsResponse {
+  avg_processing_time_ms: number
+  total_processed: number
+  processing_by_step: Record<string, StepPerformance>
+  processing_by_type: Record<string, TypePerformance>
+}

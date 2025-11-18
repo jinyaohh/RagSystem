@@ -462,6 +462,65 @@ export async function queryDocumentsAuthenticated(request: QueryRequest): Promis
 }
 
 // ============================================================================
+// Phase 3: Analytics API
+// ============================================================================
+
+export async function getUserAnalyticsStats(days: number = 30): Promise<import('@/types').UserAnalyticsStats> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/analytics/user/stats?days=${days}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getUserActivity(period: string = '30d'): Promise<import('@/types').UserActivityResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/analytics/user/activity?period=${period}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getPopularQueries(limit: number = 10): Promise<import('@/types').PopularQueriesResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/analytics/user/popular-queries?limit=${limit}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getSystemOverview(): Promise<import('@/types').SystemOverview> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/analytics/system/overview`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getProcessingStats(): Promise<import('@/types').ProcessingStatsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/analytics/documents/processing-stats`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+// ============================================================================
 // Export APIError for error handling
 // ============================================================================
 
