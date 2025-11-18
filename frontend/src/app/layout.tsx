@@ -36,9 +36,14 @@ function Header() {
               <Button variant="ghost">Documents</Button>
             </Link>
             {isAuthenticated && (
-              <Link href="/jobs">
-                <Button variant="ghost">Jobs</Button>
-              </Link>
+              <>
+                <Link href="/jobs">
+                  <Button variant="ghost">Jobs</Button>
+                </Link>
+                <Link href="/analytics">
+                  <Button variant="ghost">Analytics</Button>
+                </Link>
+              </>
             )}
 
             {!loading && (
