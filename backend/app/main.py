@@ -304,7 +304,7 @@ async def detailed_health_check():
 # ============================================================================
 
 # Import routers
-from app.api.routes import documents, query, auth, jobs
+from app.api.routes import documents, query, auth, jobs, analytics
 
 # Include routers - Phase 1
 app.include_router(documents.router, prefix="/api/v1")
@@ -318,6 +318,11 @@ if settings.AUTH_ENABLED:
 if settings.CELERY_ENABLED or settings.AUTH_ENABLED:
     app.include_router(jobs.router, prefix="/api/v1")
     logger.info("✓ Job tracking routes enabled")
+
+# Include routers - Phase 3 (conditionally based on auth)
+if settings.AUTH_ENABLED:
+    app.include_router(analytics.router, prefix="/api/v1")
+    logger.info("✓ Analytics routes enabled")
 
 
 # ============================================================================
@@ -357,6 +362,17 @@ async def root():
             "get": "/api/v1/jobs/{job_id}",
             "cancel": "/api/v1/jobs/{job_id}/cancel",
             "stats": "/api/v1/jobs/stats/summary",
+        }
+
+    # Add Phase 3 endpoints if enabled
+    if settings.AUTH_ENABLED:
+        endpoints["analytics"] = {
+            "user_stats": "/api/v1/analytics/user/stats",
+            "user_activity": "/api/v1/analytics/user/activity",
+            "popular_queries": "/api/v1/analytics/user/popular-queries",
+            "system_overview": "/api/v1/analytics/system/overview",
+            "processing_stats": "/api/v1/analytics/documents/processing-stats",
+            "health": "/api/v1/analytics/health",
         }
 
     return {
