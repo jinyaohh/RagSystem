@@ -228,17 +228,58 @@ async def detailed_health_check():
                 logger.error(f"Error getting collection info: {e}")
                 collection_status = {"error": str(e)}
 
+        # Phase 2 Services
+        services_status = {
+            "llm": llm_status,
+            "embedding": embedding_status,
+            "vector_db": vector_status,
+            "collection": collection_status,
+        }
+
+        # Check Supabase (Phase 2)
+        if settings.AUTH_ENABLED:
+            try:
+                from app.services.supabase_service import get_supabase_service
+                supabase_service = get_supabase_service()
+                supabase_status = supabase_service.health_check()
+                services_status["supabase"] = supabase_status
+            except Exception as e:
+                logger.error(f"Supabase health check failed: {e}")
+                services_status["supabase"] = {"status": "unhealthy", "error": str(e)}
+
+        # Check Celery (Phase 2)
+        if settings.CELERY_ENABLED:
+            try:
+                from app.tasks.celery_app import celery_app
+                # Check Celery worker status
+                inspect = celery_app.control.inspect()
+                stats = inspect.stats()
+                active = inspect.active()
+
+                celery_status = {
+                    "status": "healthy" if stats else "unhealthy",
+                    "workers": len(stats) if stats else 0,
+                    "active_tasks": sum(len(tasks) for tasks in active.values()) if active else 0,
+                }
+                services_status["celery"] = celery_status
+            except Exception as e:
+                logger.error(f"Celery health check failed: {e}")
+                services_status["celery"] = {"status": "unhealthy", "error": str(e)}
+
+        # Feature flags
+        feature_flags = {
+            "auth_enabled": settings.AUTH_ENABLED,
+            "celery_enabled": settings.CELERY_ENABLED,
+            "redis_enabled": settings.REDIS_ENABLED,
+        }
+
         return {
             "status": "healthy",
             "app_name": settings.APP_NAME,
             "version": settings.APP_VERSION,
             "environment": settings.ENVIRONMENT.value,
-            "services": {
-                "llm": llm_status,
-                "embedding": embedding_status,
-                "vector_db": vector_status,
-                "collection": collection_status,
-            },
+            "services": services_status,
+            "features": feature_flags,
             "config": {
                 "chunk_size": settings.CHUNK_SIZE,
                 "chunk_overlap": settings.CHUNK_OVERLAP,
@@ -263,11 +304,20 @@ async def detailed_health_check():
 # ============================================================================
 
 # Import routers
-from app.api.routes import documents, query
+from app.api.routes import documents, query, auth, jobs
 
-# Include routers
+# Include routers - Phase 1
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(query.router, prefix="/api/v1")
+
+# Include routers - Phase 2 (conditionally based on feature flags)
+if settings.AUTH_ENABLED:
+    app.include_router(auth.router, prefix="/api/v1")
+    logger.info("✓ Authentication routes enabled")
+
+if settings.CELERY_ENABLED or settings.AUTH_ENABLED:
+    app.include_router(jobs.router, prefix="/api/v1")
+    logger.info("✓ Job tracking routes enabled")
 
 
 # ============================================================================
@@ -282,18 +332,44 @@ async def root():
     Returns:
         API information and available endpoints
     """
+    endpoints = {
+        "health": "/health",
+        "detailed_health": "/health/detailed",
+        "docs": "/docs" if settings.DEBUG else None,
+        "redoc": "/redoc" if settings.DEBUG else None,
+        "documents": "/api/v1/documents",
+        "query": "/api/v1/query",
+    }
+
+    # Add Phase 2 endpoints if enabled
+    if settings.AUTH_ENABLED:
+        endpoints["auth"] = {
+            "signup": "/api/v1/auth/signup",
+            "login": "/api/v1/auth/login",
+            "logout": "/api/v1/auth/logout",
+            "refresh": "/api/v1/auth/refresh",
+            "me": "/api/v1/auth/me",
+        }
+
+    if settings.CELERY_ENABLED or settings.AUTH_ENABLED:
+        endpoints["jobs"] = {
+            "list": "/api/v1/jobs",
+            "get": "/api/v1/jobs/{job_id}",
+            "cancel": "/api/v1/jobs/{job_id}/cancel",
+            "stats": "/api/v1/jobs/stats/summary",
+        }
+
     return {
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "description": "RAG system for querying financial reports",
         "docs": "/docs" if settings.DEBUG else None,
         "health": "/health",
-        "endpoints": {
-            "health": "/health",
-            "detailed_health": "/health/detailed",
-            "docs": "/docs",
-            "redoc": "/redoc",
-        }
+        "features": {
+            "authentication": settings.AUTH_ENABLED,
+            "async_processing": settings.CELERY_ENABLED,
+        },
+        "endpoints": endpoints
     }
 
 
