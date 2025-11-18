@@ -11,6 +11,12 @@ import {
   QueryRequest,
   QueryResponse,
   HealthResponse,
+  AuthResponse,
+  SignupRequest,
+  LoginRequest,
+  User,
+  ProcessingJob,
+  JobListResponse,
 } from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -245,6 +251,213 @@ export async function getQueryServiceInfo(): Promise<{
   }
 }> {
   const response = await fetch(`${API_BASE_URL}/api/v1/query/info`)
+  return handleResponse(response)
+}
+
+// ============================================================================
+// Phase 2: Authentication API
+// ============================================================================
+
+let authToken: string | null = null
+
+export function setAuthToken(token: string | null) {
+  authToken = token
+  if (token) {
+    localStorage.setItem('auth_token', token)
+  } else {
+    localStorage.removeItem('auth_token')
+  }
+}
+
+export function getAuthToken(): string | null {
+  if (!authToken && typeof window !== 'undefined') {
+    authToken = localStorage.getItem('auth_token')
+  }
+  return authToken
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  return headers
+}
+
+export async function signup(data: SignupRequest): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  const result = await handleResponse<AuthResponse>(response)
+  setAuthToken(result.access_token)
+  return result
+}
+
+export async function login(data: LoginRequest): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  const result = await handleResponse<AuthResponse>(response)
+  setAuthToken(result.access_token)
+  return result
+}
+
+export async function logout(): Promise<void> {
+  try {
+    const token = getAuthToken()
+    if (token) {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+  } finally {
+    setAuthToken(null)
+  }
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${getAuthToken()}`,
+    },
+  })
+
+  return handleResponse<User>(response)
+}
+
+export async function refreshToken(refreshToken: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  })
+
+  const result = await handleResponse<AuthResponse>(response)
+  setAuthToken(result.access_token)
+  return result
+}
+
+// ============================================================================
+// Phase 2: Job Tracking API
+// ============================================================================
+
+export async function listJobs(status?: string): Promise<JobListResponse> {
+  const params = new URLSearchParams()
+  if (status) {
+    params.append('status', status)
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/jobs/?${params.toString()}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  )
+
+  return handleResponse<JobListResponse>(response)
+}
+
+export async function getJob(jobId: string): Promise<ProcessingJob> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}`, {
+    headers: getAuthHeaders(),
+  })
+
+  return handleResponse<ProcessingJob>(response)
+}
+
+export async function cancelJob(jobId: string): Promise<ProcessingJob> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/cancel`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+
+  return handleResponse<ProcessingJob>(response)
+}
+
+// ============================================================================
+// Phase 2: Update existing functions to support authentication
+// ============================================================================
+
+export async function uploadDocumentAuthenticated(file: File): Promise<DocumentUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  return handleResponse(response)
+}
+
+export async function uploadAndProcessDocumentAuthenticated(
+  file: File,
+): Promise<DocumentProcessingResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload-and-process`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  return handleResponse(response)
+}
+
+export async function listDocumentsAuthenticated(): Promise<{ documents: Document[]; total: number }> {
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/`, {
+    headers,
+  })
+  return handleResponse(response)
+}
+
+export async function queryDocumentsAuthenticated(request: QueryRequest): Promise<QueryResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/query/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(request),
+  })
+
   return handleResponse(response)
 }
 

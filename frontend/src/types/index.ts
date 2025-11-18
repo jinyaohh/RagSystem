@@ -133,3 +133,73 @@ export interface UploadState {
   result: DocumentProcessingResult | null
   error: string | null
 }
+
+// ============================================================================
+// Phase 2: Authentication & Job Tracking Types
+// ============================================================================
+
+export interface User {
+  id: string
+  email: string
+  full_name?: string
+  created_at: string
+  total_documents?: number
+  total_queries?: number
+}
+
+export interface AuthResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  user: User
+  expires_in: number
+}
+
+export interface SignupRequest {
+  email: string
+  password: string
+  full_name?: string
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export enum JobStatus {
+  QUEUED = 'queued',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+}
+
+export enum ProcessingStep {
+  QUEUED = 'queued',
+  EXTRACTION = 'extraction',
+  CHUNKING = 'chunking',
+  EMBEDDING = 'embedding',
+  STORAGE = 'storage',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+export interface ProcessingJob {
+  id: string
+  document_id: string
+  user_id: string
+  status: JobStatus
+  task_id: string
+  progress: number
+  current_step?: ProcessingStep
+  error_message?: string
+  created_at: string
+  started_at?: string
+  completed_at?: string
+}
+
+export interface JobListResponse {
+  jobs: ProcessingJob[]
+  total: number
+  status_counts: Record<JobStatus, number>
+}

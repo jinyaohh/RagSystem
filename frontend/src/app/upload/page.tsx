@@ -4,17 +4,21 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { uploadAndProcessDocument } from '@/lib/api'
+import { uploadAndProcessDocument, uploadAndProcessDocumentAuthenticated } from '@/lib/api'
 import { formatBytes } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 import type { DocumentProcessingResult } from '@/types'
+import Link from 'next/link'
 
 export default function UploadPage() {
+  const { isAuthenticated } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<DocumentProcessingResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [jobId, setJobId] = useState<string | null>(null)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -53,6 +57,7 @@ export default function UploadPage() {
     setProgress(0)
     setError(null)
     setResult(null)
+    setJobId(null)
 
     try {
       // Simulate progress (since we don't have real progress from fetch)
@@ -60,11 +65,22 @@ export default function UploadPage() {
         setProgress((prev) => Math.min(prev + 10, 90))
       }, 500)
 
-      const response = await uploadAndProcessDocument(file)
+      // Use authenticated API if user is logged in
+      const response = isAuthenticated
+        ? await uploadAndProcessDocumentAuthenticated(file)
+        : await uploadAndProcessDocument(file)
 
       clearInterval(progressInterval)
       setProgress(100)
       setResult(response)
+
+      // Extract job ID from message if queued (Phase 2 async processing)
+      if (response.status === 'queued' && response.message) {
+        const jobIdMatch = response.message.match(/Job ID: ([a-f0-9-]+)/)
+        if (jobIdMatch) {
+          setJobId(jobIdMatch[1])
+        }
+      }
 
       if (response.status === 'failed') {
         setError(response.error || 'Processing failed')
@@ -81,6 +97,7 @@ export default function UploadPage() {
     setProgress(0)
     setResult(null)
     setError(null)
+    setJobId(null)
   }
 
   return (
@@ -182,7 +199,34 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* Success Result */}
+          {/* Queued Result (Phase 2 Async Processing) */}
+          {result && result.status === 'queued' && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded space-y-3">
+              <p className="font-medium">✓ Document uploaded successfully!</p>
+              <p className="text-sm">
+                Your document is being processed in the background. You can monitor
+                the progress on the Jobs page.
+              </p>
+
+              {jobId && (
+                <div className="text-sm">
+                  <p className="font-medium">Job ID:</p>
+                  <p className="font-mono text-xs">{jobId}</p>
+                </div>
+              )}
+
+              <div className="pt-2 flex gap-2">
+                <Button variant="outline" onClick={resetForm}>
+                  Upload Another
+                </Button>
+                <Link href="/jobs">
+                  <Button>View Jobs</Button>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Success Result (Phase 1 Synchronous Processing) */}
           {result && result.status === 'completed' && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded space-y-3">
               <p className="font-medium">✓ Document processed successfully!</p>
