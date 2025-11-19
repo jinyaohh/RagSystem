@@ -5,12 +5,20 @@ Handles natural language queries against uploaded documents.
 """
 
 import logging
+import time
 from typing import Optional, List
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
+from app.middleware.auth import get_current_user_optional
+from app.models.analytics import QueryLogCreate
+from app.models.user import User
+from app.services.analytics_service import AnalyticsService
 from app.services.rag import RAGService
+from app.services.supabase_service import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +26,15 @@ router = APIRouter(prefix="/query", tags=["Query"])
 
 # Initialize RAG service
 rag_service = RAGService()
+
+
+def get_analytics_service(
+    supabase: SupabaseService = Depends(lambda: SupabaseService() if settings.AUTH_ENABLED else None)
+) -> Optional[AnalyticsService]:
+    """Get analytics service instance."""
+    if not settings.AUTH_ENABLED or not supabase:
+        return None
+    return AnalyticsService(supabase)
 
 
 # ============================================================================
@@ -74,6 +91,8 @@ class CompareRequest(BaseModel):
 @router.post("/", response_model=QueryResponse)
 async def query_documents(
     request: QueryRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    analytics: Optional[AnalyticsService] = Depends(get_analytics_service),
 ) -> QueryResponse:
     """
     Query documents with natural language.
@@ -83,6 +102,8 @@ async def query_documents(
 
     Args:
         request: Query request with question and optional parameters
+        current_user: Optional authenticated user (for analytics)
+        analytics: Optional analytics service (for query logging)
 
     Returns:
         Answer with sources and statistics
@@ -96,15 +117,23 @@ async def query_documents(
         }
         ```
     """
+    start_time = time.time()
+    status_code = "success"
+    error_message = None
+
     try:
         logger.info(f"Received query: '{request.question[:100]}...'")
 
         # Build filters if document_ids provided
         filters = None
+        document_uuids = []
         if request.document_ids:
-            # Note: Proper multi-value filtering will be implemented in Phase 2
             logger.info(f"Filtering by document IDs: {request.document_ids}")
-            # For now, we'll search across all documents
+            # Convert to UUIDs for analytics
+            try:
+                document_uuids = [UUID(doc_id) for doc_id in request.document_ids]
+            except ValueError:
+                logger.warning("Invalid document IDs provided for filtering")
 
         # Execute RAG query
         result = await rag_service.query(
@@ -114,10 +143,54 @@ async def query_documents(
             include_sources=request.include_sources,
         )
 
+        # Calculate response time
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Log query for analytics (if enabled and user is authenticated)
+        if analytics and current_user:
+            try:
+                query_log = QueryLogCreate(
+                    user_id=current_user.id,
+                    question=request.question,
+                    answer_length=len(result.get("answer", "")),
+                    response_time_ms=response_time_ms,
+                    num_sources=result.get("num_sources", 0),
+                    document_ids=document_uuids if document_uuids else None,
+                    status="success",
+                    tokens_used=result.get("llm_stats", {}).get("tokens_used"),
+                    model=result.get("llm_stats", {}).get("model"),
+                )
+                await analytics.log_query(query_log)
+                logger.debug("Query logged to analytics")
+            except Exception as e:
+                # Don't fail the request if analytics logging fails
+                logger.warning(f"Failed to log query analytics: {e}")
+
         return QueryResponse(**result)
 
     except Exception as e:
         logger.error(f"Query failed: {e}", exc_info=True)
+        error_message = str(e)
+        status_code = "failed"
+
+        # Log failed query for analytics (if enabled and user is authenticated)
+        if analytics and current_user:
+            try:
+                response_time_ms = int((time.time() - start_time) * 1000)
+                query_log = QueryLogCreate(
+                    user_id=current_user.id,
+                    question=request.question,
+                    answer_length=0,
+                    response_time_ms=response_time_ms,
+                    num_sources=0,
+                    document_ids=None,
+                    status="failed",
+                    error_message=error_message,
+                )
+                await analytics.log_query(query_log)
+            except Exception as analytics_error:
+                logger.warning(f"Failed to log failed query analytics: {analytics_error}")
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Query failed: {str(e)}"
@@ -127,6 +200,8 @@ async def query_documents(
 @router.post("/batch", response_model=List[QueryResponse])
 async def query_batch(
     request: MultiQueryRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    analytics: Optional[AnalyticsService] = Depends(get_analytics_service),
 ) -> List[QueryResponse]:
     """
     Process multiple queries in batch.
@@ -135,6 +210,8 @@ async def query_batch(
 
     Args:
         request: Batch query request
+        current_user: Optional authenticated user (for analytics)
+        analytics: Optional analytics service (for query logging)
 
     Returns:
         List of query responses
@@ -147,6 +224,26 @@ async def query_batch(
             top_k=request.top_k,
             include_sources=request.include_sources,
         )
+
+        # Log each query in the batch (if enabled and user is authenticated)
+        if analytics and current_user:
+            for i, result in enumerate(results):
+                try:
+                    query_log = QueryLogCreate(
+                        user_id=current_user.id,
+                        question=request.questions[i],
+                        answer_length=len(result.get("answer", "")),
+                        response_time_ms=result.get("response_time_ms", 0),
+                        num_sources=result.get("num_sources", 0),
+                        document_ids=None,
+                        status="success" if result.get("status") == "success" else "failed",
+                        error_message=result.get("error") if result.get("status") == "failed" else None,
+                        tokens_used=result.get("llm_stats", {}).get("tokens_used"),
+                        model=result.get("llm_stats", {}).get("model"),
+                    )
+                    await analytics.log_query(query_log)
+                except Exception as e:
+                    logger.warning(f"Failed to log batch query {i} analytics: {e}")
 
         return [QueryResponse(**result) for result in results]
 
