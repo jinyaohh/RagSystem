@@ -10,8 +10,9 @@ This system includes three progressive deployment modes:
 - **Phase 2 (Production)**: Multi-user system with authentication, async processing, and job tracking - production-ready
 - **Phase 3 (Analytics)**: Comprehensive analytics dashboard with query logging, activity tracking, and performance insights
 
-👉 **See [PHASE2_SETUP.md](PHASE2_SETUP.md) for Phase 2 setup guide**
-👉 **See [PHASE3_SETUP.md](PHASE3_SETUP.md) for Phase 3 analytics setup guide**
+👉 **See [QUICKSTART.md](QUICKSTART.md) for quick setup guide**
+👉 **See [docs/setup/PHASE2_PRODUCTION.md](docs/setup/PHASE2_PRODUCTION.md) for Phase 2 setup**
+👉 **See [docs/setup/PHASE3_ANALYTICS.md](docs/setup/PHASE3_ANALYTICS.md) for Phase 3 analytics setup**
 
 ## Features
 
@@ -135,7 +136,7 @@ npm run dev
 
 For production deployment with authentication and async processing:
 
-👉 **See [PHASE2_SETUP.md](PHASE2_SETUP.md) for complete Phase 2 setup instructions**
+👉 **See [docs/setup/PHASE2_PRODUCTION.md](docs/setup/PHASE2_PRODUCTION.md) for complete Phase 2 setup instructions**
 
 Quick summary:
 1. Create Supabase project and execute schema
@@ -314,7 +315,7 @@ npm run test:e2e  # End-to-end tests
    - Backend: Deploy to Railway/Render
    - Database: Managed PostgreSQL (AWS RDS, etc.)
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+See [CLAUDE.md - Deployment](CLAUDE.md#deployment) for detailed deployment instructions.
 
 ## Monitoring
 
@@ -435,6 +436,8 @@ Phase 1 (MVP):                    Phase 2 (Production):                   Phase 
                                                                             └───────────────────────┘
 ```
 
-See implementation plans:
-- [PHASE2_IMPLEMENTATION_PLAN.md](PHASE2_IMPLEMENTATION_PLAN.md) - Phase 2 technical architecture
-- [PHASE3_IMPLEMENTATION_PLAN.md](PHASE3_IMPLEMENTATION_PLAN.md) - Phase 3 analytics design
+See documentation:
+- [docs/setup/PHASE2_PRODUCTION.md](docs/setup/PHASE2_PRODUCTION.md) - Phase 2 setup guide
+- [docs/setup/PHASE3_ANALYTICS.md](docs/setup/PHASE3_ANALYTICS.md) - Phase 3 setup guide
+- [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) - Technical architecture
+- [CLAUDE.md](CLAUDE.md) - Developer & maintainer guide
