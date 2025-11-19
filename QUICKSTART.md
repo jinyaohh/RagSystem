@@ -30,22 +30,24 @@ Get up and running with the Financial RAG System in minutes.
 # Clone repository
 git clone https://github.com/yourusername/RagSystem.git
 cd RagSystem
+```
 
-# Backend setup
+**Backend setup:**
+```bash
 cd backend
 cp .env.example .env
 ```
 
-Edit `backend/.env`:
+Edit `backend/.env` with your settings:
 ```bash
 OPENAI_API_KEY=your-api-key-here
 AUTH_ENABLED=false
 CELERY_ENABLED=false
 ```
 
+**Frontend setup:**
 ```bash
-# Frontend setup
-cd ../frontend
+cd frontend
 cp .env.example .env.local
 ```
 
@@ -53,6 +55,8 @@ Edit `frontend/.env.local`:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+> **Note:** Configuration files are in `backend/.env` and `frontend/.env.local`, not in the root directory.
 
 ### 2. Start Services
 
