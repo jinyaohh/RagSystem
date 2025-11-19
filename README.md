@@ -2,14 +2,16 @@
 
 A production-grade Retrieval-Augmented Generation (RAG) system for querying financial reports using natural language. Built with FastAPI, Next.js, Qdrant vector database, and Supabase.
 
-## 🚀 Phase 2: Production-Ready Multi-User System
+## 🚀 Phase 3: Advanced Analytics Dashboard
 
-This system includes two deployment modes:
+This system includes three progressive deployment modes:
 
 - **Phase 1 (MVP)**: Single-user system with synchronous processing - perfect for quick setup and testing
 - **Phase 2 (Production)**: Multi-user system with authentication, async processing, and job tracking - production-ready
+- **Phase 3 (Analytics)**: Comprehensive analytics dashboard with query logging, activity tracking, and performance insights
 
 👉 **See [PHASE2_SETUP.md](PHASE2_SETUP.md) for Phase 2 setup guide**
+👉 **See [PHASE3_SETUP.md](PHASE3_SETUP.md) for Phase 3 analytics setup guide**
 
 ## Features
 
@@ -30,6 +32,18 @@ This system includes two deployment modes:
 - **Cloud Storage**: Supabase storage for document files
 - **Multi-tenancy**: Full support for multiple users with isolated data
 
+### Phase 3 Features (Analytics)
+- **Comprehensive Analytics**: User-specific analytics dashboard with interactive charts
+- **Automatic Query Logging**: All queries automatically logged with detailed metrics
+- **Activity Tracking**: Daily breakdown of queries and document uploads
+- **Popular Queries**: Identify frequently asked questions and their performance
+- **Document Insights**: Track which documents are queried most often
+- **Performance Metrics**: Monitor query response times, success rates, and token usage
+- **System Overview**: System-wide metrics for administrators
+- **Auto-Refresh Dashboard**: 30-second polling with real-time updates
+- **Interactive Charts**: Recharts-powered visualizations (line, pie, bar charts)
+- **Processing Analytics**: Track document processing times by step and type
+
 ## Tech Stack
 
 ### Backend
@@ -46,6 +60,8 @@ This system includes two deployment modes:
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first styling
 - **shadcn/ui**: High-quality UI components
+- **Recharts**: Interactive data visualization library (Phase 3)
+- **date-fns**: Date manipulation and formatting (Phase 3)
 - **React Query**: Server state management
 - **Zustand**: Client state management
 
@@ -223,6 +239,14 @@ Once the backend is running, visit:
 - `GET /api/v1/jobs/{job_id}` - Get job status
 - `POST /api/v1/jobs/{job_id}/cancel` - Cancel job
 
+**Phase 3 Analytics Endpoints:**
+- `GET /api/v1/analytics/user/stats` - User analytics statistics
+- `GET /api/v1/analytics/user/activity` - Daily activity breakdown
+- `GET /api/v1/analytics/user/popular-queries` - Most asked questions
+- `GET /api/v1/analytics/system/overview` - System-wide overview
+- `GET /api/v1/analytics/documents/processing-stats` - Processing metrics
+- `GET /api/v1/analytics/health` - Analytics service health
+
 ## Configuration
 
 ### Environment Variables
@@ -371,11 +395,16 @@ For questions or support, please open an issue on GitHub.
 - [x] Async processing with job tracking (Phase 2)
 - [x] Cloud storage integration (Phase 2)
 - [x] Row-level security (Phase 2)
+- [x] Advanced analytics dashboard (Phase 3)
+- [x] Automatic query logging (Phase 3)
+- [x] Activity tracking and insights (Phase 3)
+- [x] Performance monitoring (Phase 3)
+- [x] Interactive data visualizations (Phase 3)
 
 ### In Progress 🚧
-- [ ] Advanced analytics dashboard
 - [ ] Fine-tuned embeddings for finance
 - [ ] Multi-modal support (charts, images)
+- [ ] Unit tests for Phase 3
 
 ### Planned 📋
 - [ ] Mobile application
@@ -388,20 +417,24 @@ For questions or support, please open an issue on GitHub.
 ## Architecture
 
 ```
-Phase 1 (MVP):                    Phase 2 (Production):
-┌──────────┐                      ┌──────────┐
-│ Next.js  │                      │ Next.js  │ (Auth Context)
-└────┬─────┘                      └────┬─────┘
-     │                                 │
-     ▼                                 ▼
-┌──────────┐                      ┌──────────┐
-│ FastAPI  │                      │ FastAPI  │ (Auth Middleware)
-└────┬─────┘                      └────┬─────┘
-     │                                 │
-     ▼                            ┌────┴────┬─────────┬─────────┐
-┌──────────┐                      ▼         ▼         ▼         ▼
-│  Qdrant  │                   Supabase   Redis    Qdrant    Celery
-└──────────┘                   (DB+Auth)  (Queue) (Vectors) (Workers)
+Phase 1 (MVP):                    Phase 2 (Production):                   Phase 3 (Analytics):
+┌──────────┐                      ┌──────────┐                            ┌──────────────┐
+│ Next.js  │                      │ Next.js  │ (Auth Context)             │   Next.js    │ (Auth + Analytics)
+└────┬─────┘                      └────┬─────┘                            │  + Recharts  │
+     │                                 │                                   └──────┬───────┘
+     ▼                                 ▼                                          │
+┌──────────┐                      ┌──────────┐                            ┌──────┴───────┐
+│ FastAPI  │                      │ FastAPI  │ (Auth Middleware)          │   FastAPI    │ (Query Logging)
+└────┬─────┘                      └────┬─────┘                            │  + Analytics │
+     │                                 │                                   └──────┬───────┘
+     ▼                            ┌────┴────┬─────────┬─────────┐                │
+┌──────────┐                      ▼         ▼         ▼         ▼         ┌──────┴────────────────┐
+│  Qdrant  │                   Supabase   Redis    Qdrant    Celery       │      Supabase         │
+└──────────┘                   (DB+Auth)  (Queue) (Vectors) (Workers)     │ DB + Analytics Tables │
+                                                                            │ (query_logs, metrics) │
+                                                                            └───────────────────────┘
 ```
 
-See [PHASE2_IMPLEMENTATION_PLAN.md](PHASE2_IMPLEMENTATION_PLAN.md) for detailed technical architecture and design decisions.
+See implementation plans:
+- [PHASE2_IMPLEMENTATION_PLAN.md](PHASE2_IMPLEMENTATION_PLAN.md) - Phase 2 technical architecture
+- [PHASE3_IMPLEMENTATION_PLAN.md](PHASE3_IMPLEMENTATION_PLAN.md) - Phase 3 analytics design
