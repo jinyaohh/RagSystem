@@ -28,6 +28,8 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [period, setPeriod] = useState('30d')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
 
   const fetchAnalytics = async () => {
     try {
@@ -41,6 +43,7 @@ export default function AnalyticsPage() {
       setStats(statsData)
       setActivity(activityData)
       setPopularQueries(queriesData)
+      setLastUpdated(new Date())
       setError('')
     } catch (err: any) {
       setError(err.message || 'Failed to fetch analytics')
@@ -49,6 +52,7 @@ export default function AnalyticsPage() {
     }
   }
 
+  // Initial fetch
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       fetchAnalytics()
@@ -56,6 +60,19 @@ export default function AnalyticsPage() {
       setLoading(false)
     }
   }, [isAuthenticated, authLoading, period])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!autoRefresh || !isAuthenticated || authLoading) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      fetchAnalytics()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, isAuthenticated, authLoading, period])
 
   if (authLoading || loading) {
     return (
@@ -132,8 +149,23 @@ export default function AnalyticsPage() {
           <p className="text-gray-600 mt-1">
             Insights into your document usage and query patterns
           </p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-500 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+              {autoRefresh && ' • Auto-refresh enabled'}
+            </p>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded"
+            />
+            Auto-refresh (30s)
+          </label>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
