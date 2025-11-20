@@ -8,7 +8,7 @@ import logging
 from typing import List, Dict, Any, Optional
 import re
 
-from langchain.text_splitter import (
+from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
     CharacterTextSplitter,
     TokenTextSplitter,
